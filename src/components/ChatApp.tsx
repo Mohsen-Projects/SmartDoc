@@ -330,25 +330,30 @@ export default function ChatApp() {
 
         {/* Input Area */}
         <div className="p-8 border-t border-white/5 bg-[#0f1117]">
-          <div className="max-w-3xl mx-auto relative group">
-            <input 
-              type="text" 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder={mode === 'Summary' ? `Explain with ${summarySubMode}...` : `Type your request for ${mode} mode...`}
-              className="w-full bg-[#1a1d25] border border-white/5 rounded-2xl pl-14 pr-16 py-4 text-sm focus:outline-none focus:border-[#2563eb]/50 transition-all shadow-2xl"
-            />
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/5 rounded-lg text-[#6b7280] transition-colors cursor-pointer">
-              <Upload size={20} onClick={triggerFileUpload} />
+          <div className="max-w-3xl mx-auto group">
+            <div className="relative">
+              <input 
+                type="text" 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder={mode === 'Summary' ? `Explain with ${summarySubMode}...` : `Type your request for ${mode} mode...`}
+                className="w-full bg-[#1a1d25] border border-white/5 rounded-2xl pl-14 pr-16 py-4 text-sm focus:outline-none focus:border-[#2563eb]/50 transition-all shadow-2xl"
+              />
+              <div 
+                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 hover:bg-white/5 rounded-lg text-[#6b7280] transition-colors cursor-pointer flex items-center justify-center"
+                onClick={triggerFileUpload}
+              >
+                <Upload size={20} />
+              </div>
+              <button 
+                type="button"
+                onClick={handleSend}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#2563eb] text-white rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-lg shadow-blue-900/20"
+              >
+                <Send size={18} />
+              </button>
             </div>
-            <button 
-              type="button"
-              onClick={handleSend}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#2563eb] text-white rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-lg shadow-blue-900/20"
-            >
-              <Send size={18} />
-            </button>
             <div className="mt-4 flex justify-between items-center px-2">
               <div className="flex gap-4">
                 <span className="text-[10px] font-bold text-[#6b7280] uppercase tracking-widest flex items-center gap-1 focus-within:text-[#2563eb]">
