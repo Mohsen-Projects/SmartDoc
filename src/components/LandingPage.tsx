@@ -8,9 +8,15 @@ export default function LandingPage() {
   const [activeReveal, setActiveReveal] = useState<{ [key: string]: boolean }>({});
   const [showLoginModal, setShowLoginModal] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const { user, signInWithGoogle, loading } = useAuth();
+  const { user, signInWithGoogle, signInWithGithub, signInAsGuest, signInWithEmail, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     // Check if redirecting from a protected route
@@ -42,6 +48,7 @@ export default function LandingPage() {
       navigate('/chat');
     } else {
       setShowLoginModal(true);
+      setShowEmailForm(false);
     }
   };
 
@@ -52,6 +59,42 @@ export default function LandingPage() {
       navigate('/chat');
     } catch (error) {
       console.error("Login failed:", error);
+      setAuthError('Google login failed.');
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    try {
+      await signInWithGithub();
+      setShowLoginModal(false);
+      navigate('/chat');
+    } catch (error) {
+      console.error("Github login failed:", error);
+      setAuthError('Github login failed.');
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    try {
+      await signInAsGuest();
+      setShowLoginModal(false);
+      navigate('/chat');
+    } catch (error) {
+      console.error("Guest login failed:", error);
+      setAuthError('Guest login failed.');
+    }
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      await signInWithEmail(email, password, isSignUp);
+      setShowLoginModal(false);
+      navigate('/chat');
+    } catch (error: any) {
+      console.error("Email auth failed:", error);
+      setAuthError(error.message || 'Authentication failed.');
     }
   };
 
@@ -344,24 +387,75 @@ export default function LandingPage() {
               </div>
 
               <div className="space-y-4">
-                <button 
-                  onClick={handleGoogleLogin}
-                  className="w-full h-14 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-white/90 transition-colors"
-                >
-                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                  Continue with Google
-                </button>
-                
-                <div className="relative flex items-center py-4">
-                  <div className="flex-grow border-t border-white/5"></div>
-                  <span className="flex-shrink mx-4 text-xs font-bold text-[#6b7280] uppercase tracking-widest">Or continue with</span>
-                  <div className="flex-grow border-t border-white/5"></div>
-                </div>
+                {authError && <p className="text-red-500 text-xs text-center">{authError}</p>}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <button className="h-12 border border-white/5 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors">GitHub</button>
-                  <button className="h-12 border border-white/5 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors">Email</button>
-                </div>
+                {showEmailForm ? (
+                  <form onSubmit={handleEmailSubmit} className="space-y-3">
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="Email Address" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full h-12 bg-[#0f1117] border border-white/10 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-[#2563eb]"
+                    />
+                    <input 
+                      type="password" 
+                      required
+                      placeholder="Password" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full h-12 bg-[#0f1117] border border-white/10 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-[#2563eb]"
+                    />
+                    <button 
+                      type="submit"
+                      className="w-full h-12 bg-[#2563eb] text-white rounded-xl font-bold flex items-center justify-center hover:bg-blue-600 transition-colors"
+                    >
+                      {isSignUp ? 'Sign Up' : 'Sign In'}
+                    </button>
+                    <p className="text-xs text-center text-[#6b7280]">
+                      {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+                      <button type="button" className="text-[#2563eb]" onClick={() => setIsSignUp(!isSignUp)}>
+                        {isSignUp ? 'Sign In' : 'Sign Up'}
+                      </button>
+                    </p>
+                    <button type="button" onClick={() => setShowEmailForm(false)} className="w-full text-xs text-center text-[#6b7280] hover:text-white mt-2">
+                       ← Back to options
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <button 
+                      onClick={handleGoogleLogin}
+                      className="w-full h-14 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-white/90 transition-colors"
+                    >
+                      <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                      Continue with Google
+                    </button>
+                    
+                    <button 
+                      onClick={handleGithubLogin}
+                      className="w-full h-14 bg-[#24292e] text-white rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-[#2c3137] transition-colors"
+                    >
+                       {/* Simple generic SVG for Github since lucide might not have exact match without import */}
+                      <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                      </svg>
+                      Continue with GitHub
+                    </button>
+
+                    <div className="relative flex items-center py-2">
+                      <div className="flex-grow border-t border-white/5"></div>
+                      <span className="flex-shrink mx-4 text-xs font-bold text-[#6b7280] uppercase tracking-widest">Or</span>
+                      <div className="flex-grow border-t border-white/5"></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <button onClick={() => setShowEmailForm(true)} className="h-12 border border-white/5 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors">Email</button>
+                      <button onClick={handleGuestLogin} className="h-12 border border-white/5 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors">Guest</button>
+                    </div>
+                  </>
+                )}
               </div>
 
               <p className="text-center text-[10px] text-[#6b7280] mt-10 leading-relaxed">
