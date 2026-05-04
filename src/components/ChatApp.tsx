@@ -286,7 +286,7 @@ export default function ChatApp() {
         </header>
 
         {/* Chat Body */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
            <div className="max-w-3xl mx-auto space-y-8">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-4 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -329,7 +329,7 @@ export default function ChatApp() {
         </div>
 
         {/* Input Area */}
-        <div className="p-8 border-t border-white/5 bg-[#0f1117]">
+        <div className="p-4 md:p-8 border-t border-white/5 bg-[#0f1117]">
           <div className="max-w-3xl mx-auto group">
             <div className="relative">
               <input 
