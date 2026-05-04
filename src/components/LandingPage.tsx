@@ -128,7 +128,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <header className="pt-[180px] pb-[100px] text-center relative overflow-hidden">
+      <header className="pt-[120px] md:pt-[180px] pb-[60px] md:pb-[100px] text-center relative overflow-hidden">
         <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle,rgba(37,99,235,0.1)_0%,transparent_70%)] -z-10 opacity-50"></div>
         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['hero'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="hero">
           <h1 className="text-5xl md:text-7xl font-extrabold leading-[1.1] mb-6 tracking-tighter text-white">
@@ -151,7 +151,7 @@ export default function LandingPage() {
           </div>
           
           {/* Chat Mockup */}
-          <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[900px] mx-auto h-[500px] relative shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
+          <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[900px] mx-auto h-[400px] md:h-[500px] relative shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
             <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
@@ -183,7 +183,7 @@ export default function LandingPage() {
       </header>
 
       {/* Problem Section */}
-      <section id="problem" className="py-24">
+      <section id="problem" className="py-16 md:py-24">
         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['problem'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="problem">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold mb-4 text-white">Reading docs shouldn't be this painful</h2>
@@ -206,7 +206,7 @@ export default function LandingPage() {
       </section>
 
       {/* Solution Section */}
-      <section id="solution" className="py-24 bg-[#111318]">
+      <section id="solution" className="py-16 md:py-24 bg-[#111318]">
         <div className={`container mx-auto px-8 text-center transition-all duration-700 ${activeReveal['solution'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="solution">
           <div className="mb-16">
             <h2 className="text-4xl font-extrabold mb-4 text-white">SmartDoc fixes all of that</h2>
@@ -236,7 +236,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24">
+      <section id="features" className="py-16 md:py-24">
         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['features'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="features">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold text-white">Everything you need. Nothing you don't.</h2>
@@ -260,14 +260,14 @@ export default function LandingPage() {
       </section>
 
       {/* Demo Section (Fake Interactive) */}
-      <section id="demo" className="py-24 bg-[#0a0c10]">
+      <section id="demo" className="py-16 md:py-24 bg-[#0a0c10]">
          <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['demo'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="demo">
            <div className="text-center mb-16">
              <h2 className="text-4xl font-extrabold mb-4 text-white">See it in action</h2>
              <p className="text-[#6b7280] text-lg">Our AI analyzes and responds to complex document queries in real-time.</p>
            </div>
            
-           <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[800px] mx-auto h-[450px] flex flex-col overflow-hidden shadow-2xl">
+           <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[800px] mx-auto h-[350px] md:h-[450px] flex flex-col overflow-hidden shadow-2xl">
               <div className="px-6 py-4 border-b border-white/5">
                 <span className="font-bold text-white">SmartDoc Demo</span>
               </div>
@@ -292,7 +292,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-24">
+      <section id="how-it-works" className="py-16 md:py-24">
         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['how'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="how">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold text-white">Three steps to document intelligence</h2>
@@ -319,7 +319,7 @@ export default function LandingPage() {
       </section>
 
       {/* Tech Stack */}
-      <section className="py-24 text-center">
+      <section className="py-16 md:py-24 text-center">
         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['tech'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="tech">
           <h2 className="text-3xl font-extrabold mb-12 text-white">Built with serious technology</h2>
           <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -334,7 +334,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Final */}
-      <section className="py-32 bg-gradient-to-b from-[#0f1117] to-[#1a1d25] text-center">
+      <section className="py-20 md:py-32 bg-gradient-to-b from-[#0f1117] to-[#1a1d25] text-center">
         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['cta'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="cta">
           <h2 className="text-5xl font-extrabold mb-6 text-white">Ready to talk to your documents?</h2>
           <p className="text-xl text-[#6b7280] mb-12">Built as a graduation project. Designed like a product.</p>
