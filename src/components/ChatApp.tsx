@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Send, Upload, ChevronLeft, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut } from 'lucide-react';
+import { Send, Upload, ChevronLeft, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 
 type Message = {
@@ -27,6 +27,7 @@ export default function ChatApp() {
   const [files, setFiles] = useState<{ name: string; size: string }[]>([]);
   const [activeFileIndex, setActiveFileIndex] = useState<number | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,15 +122,27 @@ export default function ChatApp() {
         accept=".pdf"
         className="hidden" 
       />
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-[#111318] border-r border-white/5 flex flex-col hidden md:flex">
+      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#111318] border-r border-white/5 flex flex-col transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <Link to="/" className="text-xl font-black text-white tracking-tighter">
             Smart<span className="text-[#2563eb]">Doc</span>
           </Link>
-          <div className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
-            <ChevronLeft size={16} className="text-[#6b7280]" />
-          </div>
+          <button 
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors md:hidden"
+          >
+            <X size={16} className="text-[#6b7280]" />
+          </button>
         </div>
 
         <div className="flex-1 p-4 flex flex-col gap-8 overflow-y-auto">
@@ -235,9 +248,15 @@ export default function ChatApp() {
       {/* Main Chat Area */}
       <main className="flex-1 flex flex-col relative">
         {/* Header */}
-        <header className="h-[70px] border-b border-white/5 flex items-center justify-between px-8 bg-[#0f1117]/80 backdrop-blur-md sticky top-0 z-50">
-           <div className="flex items-center gap-4">
-              <Link to="/" className="md:hidden text-lg font-black text-white pr-4 border-r border-white/5">SD</Link>
+        <header className="h-[70px] border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-[#0f1117]/80 backdrop-blur-md sticky top-0 z-30">
+           <div className="flex items-center gap-3 md:gap-4">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-2 -ml-2 text-[#6b7280] hover:text-white md:hidden"
+              >
+                <Menu size={24} />
+              </button>
+              <Link to="/" className="hidden md:block text-lg font-black text-white pr-4 border-r border-white/5">SD</Link>
               <div className="flex flex-col">
                 <h2 className="text-sm font-bold text-white">
                   {activeFileIndex !== null ? files[activeFileIndex].name : 'No Document Selected'}
