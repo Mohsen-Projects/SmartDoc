@@ -2,8 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult, 
+  signInWithPopup,
   signOut, 
   onAuthStateChanged, 
   User 
@@ -17,7 +16,6 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Connection test
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -29,5 +27,5 @@ async function testConnection() {
 }
 testConnection();
 
-export { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged };
+export { signInWithPopup, signOut, onAuthStateChanged };
 export type { User };
