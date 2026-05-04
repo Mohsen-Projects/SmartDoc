@@ -1,11 +1,24 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, onAuthStateChanged, User, googleProvider, signOut } from './firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { 
+  auth, 
+  onAuthStateChanged, 
+  User, 
+  signInWithPopup, 
+  googleProvider,
+  githubProvider,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut 
+} from './firebase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithGithub: () => Promise<void>;
+  signInAsGuest: () => Promise<void>;
+  signInWithEmail: (email: string, pass: string, isSignUp: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -25,10 +38,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      setUser(result.user);
-    } catch (error: any) {
-      console.error("Error signing in:", error.code, error.message);
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+      throw error;
+    }
+  };
+
+  const signInWithGithub = async () => {
+    try {
+      await signInWithPopup(auth, githubProvider);
+    } catch (error) {
+      console.error("Error signing in with Github:", error);
+      throw error;
+    }
+  };
+
+  const signInAsGuest = async () => {
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      console.error("Error signing in as guest:", error);
+      throw error;
+    }
+  };
+
+  const signInWithEmail = async (email: string, pass: string, isSignUp: boolean) => {
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, pass);
+      } else {
+        await signInWithEmailAndPassword(auth, email, pass);
+      }
+    } catch (error) {
+      console.error("Error with email auth:", error);
       throw error;
     }
   };
@@ -36,7 +79,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await signOut(auth);
-      setUser(null);
     } catch (error) {
       console.error("Error signing out:", error);
       throw error;
@@ -44,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithGithub, signInAsGuest, signInWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );
