@@ -1,0 +1,389 @@
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../lib/AuthContext';
+import { LogIn } from 'lucide-react';
+
+export default function LandingPage() {
+  const [activeReveal, setActiveReveal] = useState<{ [key: string]: boolean }>({});
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const { user, signInWithGoogle, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Check if redirecting from a protected route
+    if (location.search.includes('login=true')) {
+      setShowLoginModal(true);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.getAttribute('data-reveal-id');
+          if (id) {
+            setActiveReveal((prev) => ({ ...prev, [id]: true }));
+          }
+        }
+      });
+    }, { threshold: 0.15 });
+
+    const revealedElements = document.querySelectorAll('[data-reveal-id]');
+    revealedElements.forEach((el) => observerRef.current?.observe(el));
+
+    return () => observerRef.current?.disconnect();
+  }, []);
+
+  const handleAuthAction = async () => {
+    if (user) {
+      navigate('/chat');
+    } else {
+      setShowLoginModal(true);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithGoogle();
+      setShowLoginModal(false);
+      navigate('/chat');
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="bg-[#0f1117] text-[#e5e7eb] font-sans overflow-x-hidden min-h-screen"
+    >
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 w-full h-[70px] bg-[#0f1117]/80 backdrop-blur-md z-[1000] border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-8 h-full flex items-center justify-between">
+          <Link to="/" className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            Smart<span className="text-[#2563eb]">Doc</span>
+          </Link>
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#problem" className="text-sm font-medium text-[#6b7280] hover:text-white transition-colors">Problem</a>
+            <a href="#solution" className="text-sm font-medium text-[#6b7280] hover:text-white transition-colors">Solution</a>
+            <a href="#features" className="text-sm font-medium text-[#6b7280] hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" className="text-sm font-medium text-[#6b7280] hover:text-white transition-colors">How It Works</a>
+            <button 
+              onClick={handleAuthAction}
+              disabled={loading}
+              className="px-5 py-2 bg-[#2563eb] text-white rounded-full font-semibold text-sm hover:scale-105 transition-all shadow-[0_4px_20px_rgba(37,99,235,0.2)] disabled:opacity-50"
+            >
+              {user ? 'Go to App' : 'Try SmartDoc →'}
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <header className="pt-[180px] pb-[100px] text-center relative overflow-hidden">
+        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle,rgba(37,99,235,0.1)_0%,transparent_70%)] -z-10 opacity-50"></div>
+        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['hero'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="hero">
+          <h1 className="text-5xl md:text-7xl font-extrabold leading-[1.1] mb-6 tracking-tighter text-white">
+            Your Documents,<br />Finally <span className="text-[#2563eb]">Intelligent</span>
+          </h1>
+          <p className="text-lg md:text-xl text-[#6b7280] max-w-3xl mx-auto mb-12 leading-relaxed">
+            Upload any PDF and ask questions, get summaries, generate slides, and visualize insights — all through one AI-powered chat interface.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 mb-20">
+            <button 
+              onClick={handleAuthAction}
+              disabled={loading}
+              className="px-8 py-4 bg-[#2563eb] text-white rounded-xl font-bold text-lg hover:-translate-y-1 transition-all shadow-[0_10px_25px_rgba(37,99,235,0.2)] disabled:opacity-50"
+            >
+              {user ? 'Open Dashboard →' : 'Try SmartDoc →'}
+            </button>
+            <button className="px-8 py-4 border border-white/10 text-white rounded-xl font-bold text-lg hover:bg-white/5 transition-all">
+              See How It Works
+            </button>
+          </div>
+          
+          {/* Chat Mockup */}
+          <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[900px] mx-auto h-[500px] relative shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#28c940]"></div>
+                <span className="text-xs text-[#6b7280] ml-4 bg-white/5 px-3 py-1 rounded">Project_Quarterly_Results_2025.pdf</span>
+              </div>
+              <div className="bg-[#2563eb]/10 text-[#2563eb] px-3 py-1 rounded-full text-[10px] font-bold border border-[#2563eb]/20 uppercase">
+                QA MODE
+              </div>
+            </div>
+            <div className="flex-1 p-8 flex flex-col gap-6 overflow-y-auto">
+              <div className="self-start bg-[#111318] text-[#e5e7eb] px-5 py-4 rounded-[18px] rounded-bl-[4px] border border-white/5 max-w-[80%] text-sm text-left">
+                Hello! I've indexed your document. How can I help you today?
+              </div>
+              <div className="self-end bg-[#2563eb] text-white px-5 py-4 rounded-[18px] rounded-br-[4px] max-w-[80%] text-sm text-left">
+                Can you summarize the main risks mentioned in section 4?
+              </div>
+              <div className="self-start bg-[#111318] text-[#e5e7eb] px-5 py-4 rounded-[18px] rounded-bl-[4px] border border-white/5 max-w-[80%] text-sm text-left">
+                Based on Section 4 (Risk Assessment), the primary risks are: 1. Supply chain delays in Southeast Asia, 2. Currency volatility, and 3. Potential regulatory changes in data privacy. Would you like a deeper dive into any of these?
+              </div>
+            </div>
+            <div className="p-6 border-t border-white/5 flex gap-4">
+              <div className="flex-1 bg-[#0f1117] border border-white/10 rounded-xl h-11"></div>
+              <div className="bg-[#2563eb] w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold">➔</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Problem Section */}
+      <section id="problem" className="py-24">
+        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['problem'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="problem">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-extrabold mb-4 text-white">Reading docs shouldn't be this painful</h2>
+            <p className="text-[#6b7280] text-lg max-w-2xl mx-auto">Modern professionals waste hours every week digging through static PDF files.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: '📄', title: 'Too much to read', desc: 'Long reports take hours to digest. Most of the content isn\'t even relevant to your specific needs.' },
+              { icon: '🔍', title: 'Can\'t find what you need', desc: 'CTRL+F is not intelligence. It just finds keywords, it doesn\'t give you conceptual answers.' },
+              { icon: '🧩', title: 'No structure, no insight', desc: 'Raw PDFs are just text on pages. They don\'t tell you what matters most or how concepts connect.' }
+            ].map((item, i) => (
+              <div key={i} className="bg-[#111318] p-10 rounded-[24px] border border-white/5 hover:border-[#2563eb] hover:shadow-[0_10px_40px_-10px_rgba(37,99,235,0.2)] hover:-translate-y-1 transition-all group">
+                <div className="text-4xl mb-6">{item.icon}</div>
+                <h3 className="text-xl font-bold mb-4 text-white">{item.title}</h3>
+                <p className="text-[#6b7280]">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Solution Section */}
+      <section id="solution" className="py-24 bg-[#111318]">
+        <div className={`container mx-auto px-8 text-center transition-all duration-700 ${activeReveal['solution'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="solution">
+          <div className="mb-16">
+            <h2 className="text-4xl font-extrabold mb-4 text-white">SmartDoc fixes all of that</h2>
+            <p className="text-[#6b7280] text-lg max-w-2xl mx-auto">One upload. Four powerful AI modes. Every document becomes a conversation.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-4 mb-20">
+            {['🔍 QA', '📝 Summary', '🎞️ Slide Gen', '🗺️ Visualization'].map((mode, i) => (
+              <div key={i} className="bg-[#2563eb]/10 text-[#2563eb] px-6 py-3 rounded-full font-bold border border-[#2563eb]/20 flex items-center gap-2">
+                {mode}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+            {[
+              { title: 'Instant QA', desc: 'Ask natural language questions and get grounded answers cited directly from the document source.' },
+              { title: 'Multi-Depth Summary', desc: 'Choose your detail level: a 1-sentence Snapshot, a balanced Overview, or a meticulous Deep Dive.' },
+              { title: 'Outline to Presentation', desc: 'Instantly extract key arguments and data points into a structured outline ready for your next slide deck.' },
+              { title: 'Knowledge Mapping', desc: 'Visualize complex relationships and workflows within the text through auto-generated Mermaid diagrams.' }
+            ].map((item, i) => (
+              <div key={i}>
+                <h4 className="text-lg font-bold mb-4 text-white">{item.title}</h4>
+                <p className="text-[#6b7280] text-sm leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="py-24">
+        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['features'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="features">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-extrabold text-white">Everything you need. Nothing you don't.</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { title: '📤 Multi-PDF Upload', desc: 'Upload multiple documents at once and switch context mid-conversation without missing a beat.' },
+              { title: '🤖 AI-Powered QA', desc: 'Advanced RAG pipeline ensures your answers are accurate and never hallucinated.' },
+              { title: '📝 Smart Summaries', desc: 'Summarize thousands of pages in seconds with context-aware length control.' },
+              { title: '🎞️ Slide Generator', desc: 'Convert dense whitepapers into bite-sized presentation structures automatically.' },
+              { title: '🗺️ Mermaid Visualizations', desc: 'Extract flowcharts and sequence diagrams to see how your project actually works.' },
+              { title: '⚡ Typewriter Responses', desc: 'Fluid, real-time response streaming that makes the AI feel like a true teammate.' }
+            ].map((item, i) => (
+              <div key={i} className="bg-[#1a1d25] p-8 rounded-[20px] border border-white/5 hover:-translate-y-2 hover:bg-[#1e222b] transition-all">
+                <h3 className="text-lg font-bold mb-3 text-white">{item.title}</h3>
+                <p className="text-[#6b7280] text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Demo Section (Fake Interactive) */}
+      <section id="demo" className="py-24 bg-[#0a0c10]">
+         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['demo'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="demo">
+           <div className="text-center mb-16">
+             <h2 className="text-4xl font-extrabold mb-4 text-white">See it in action</h2>
+             <p className="text-[#6b7280] text-lg">Our AI analyzes and responds to complex document queries in real-time.</p>
+           </div>
+           
+           <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[800px] mx-auto h-[450px] flex flex-col overflow-hidden shadow-2xl">
+              <div className="px-6 py-4 border-b border-white/5">
+                <span className="font-bold text-white">SmartDoc Demo</span>
+              </div>
+              <div className="flex-1 p-6 flex flex-col gap-4 bg-[#0a0c10]/50 overflow-y-auto">
+                 <div className="self-end bg-[#2563eb] text-white px-4 py-2 rounded-2xl rounded-br-none text-sm max-w-[80%] opacity-0 animate-[fadeIn_0.5s_forwards_1s]">
+                    Summarize the risk distribution?
+                 </div>
+                 <div className="self-start bg-[#111318] border border-white/5 text-[#e5e7eb] px-4 py-2 rounded-2xl rounded-bl-none text-sm max-w-[80%] opacity-0 animate-[fadeIn_0.5s_forwards_3s]">
+                    The primary risks are concentrated in supply chain (45%) and market volatility (30%).
+                 </div>
+              </div>
+              <div className="p-4 bg-[#111318]/50 border-t border-white/5">
+                <button 
+                  onClick={handleAuthAction}
+                  className="w-full py-3 bg-[#2563eb] text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
+                >
+                  Try the real thing →
+                </button>
+              </div>
+           </div>
+         </div>
+      </section>
+
+      {/* How It Works */}
+      <section id="how-it-works" className="py-24">
+        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['how'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="how">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-extrabold text-white">Three steps to document intelligence</h2>
+          </div>
+          <div className="flex flex-col md:flex-row justify-between items-start gap-12 relative">
+            {[
+              { num: '1', icon: '📤', title: 'Upload your PDF', desc: 'Drag and drop any document. Multiple files supported simultaneously.' },
+              { num: '2', icon: '💬', title: 'Choose your mode', desc: 'Switch between QA, Summary, Slides, or Visualization modes anytime.' },
+              { num: '3', icon: '🚀', title: 'Get your answer', desc: 'SmartDoc reads, reasons, and responds in seconds with perfect accuracy.' }
+            ].map((step, i) => (
+              <div key={i} className="flex-1 text-center relative z-10">
+                <div className="w-12 h-12 bg-[#2563eb] text-white rounded-full flex items-center justify-center font-black text-xl mx-auto mb-6 shadow-[0_0_20px_rgba(37,99,235,0.4)]">
+                  {step.num}
+                </div>
+                <div className="text-4xl mb-4">{step.icon}</div>
+                <h3 className="text-xl font-bold mb-2 text-white">{step.title}</h3>
+                <p className="text-[#6b7280] text-sm">{step.desc}</p>
+              </div>
+            ))}
+            {/* Connecting line for desktop */}
+            <div className="hidden md:block absolute top-6 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-[#2563eb] to-transparent z-0"></div>
+          </div>
+        </div>
+      </section>
+
+      {/* Tech Stack */}
+      <section className="py-24 text-center">
+        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['tech'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="tech">
+          <h2 className="text-3xl font-extrabold mb-12 text-white">Built with serious technology</h2>
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            {['Python', 'Flask', 'Claude AI (Anthropic)', 'Mermaid.js', 'RAG Pipeline', 'JavaScript', 'Tailwind CSS'].map((tech, i) => (
+              <div key={i} className="bg-[#1a1d25] px-5 py-2 rounded-lg font-bold text-sm text-white border border-white/5">
+                {tech}
+              </div>
+            ))}
+          </div>
+          <p className="text-[#6b7280]">SmartDoc combines retrieval-augmented generation with large language models to deliver grounded, accurate answers — not hallucinations.</p>
+        </div>
+      </section>
+
+      {/* CTA Final */}
+      <section className="py-32 bg-gradient-to-b from-[#0f1117] to-[#1a1d25] text-center">
+        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['cta'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="cta">
+          <h2 className="text-5xl font-extrabold mb-6 text-white">Ready to talk to your documents?</h2>
+          <p className="text-xl text-[#6b7280] mb-12">Built as a graduation project. Designed like a product.</p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <button 
+              onClick={handleAuthAction}
+              disabled={loading}
+              className="px-10 py-5 bg-[#2563eb] text-white rounded-xl font-bold text-xl hover:scale-105 transition-all shadow-xl shadow-blue-900/10 disabled:opacity-50"
+            >
+              {user ? 'Open Dashboard →' : 'Launch SmartDoc →'}
+            </button>
+            <a href="https://github.com/GP-SmartDoc/Smart-Doc" target="_blank" rel="noopener noreferrer" className="px-10 py-5 border border-white/10 text-white rounded-xl font-bold text-xl hover:bg-white/5 transition-all">
+              View on GitHub
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Login Modal */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLoginModal(false)}
+              className="absolute inset-0 bg-[#000]/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-[#1a1d25] border border-white/10 rounded-[32px] w-full max-w-md p-10 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-[#2563eb]" />
+              <button 
+                onClick={() => setShowLoginModal(false)}
+                className="absolute top-6 right-6 text-[#6b7280] hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+              
+              <div className="text-center mb-10">
+                <div className="w-16 h-16 bg-[#2563eb]/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <LogIn size={32} className="text-[#2563eb]" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Welcome to SmartDoc</h3>
+                <p className="text-[#6b7280]">Connect your account to start analyzing your documents.</p>
+              </div>
+
+              <div className="space-y-4">
+                <button 
+                  onClick={handleGoogleLogin}
+                  className="w-full h-14 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-white/90 transition-colors"
+                >
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                  Continue with Google
+                </button>
+                
+                <div className="relative flex items-center py-4">
+                  <div className="flex-grow border-t border-white/5"></div>
+                  <span className="flex-shrink mx-4 text-xs font-bold text-[#6b7280] uppercase tracking-widest">Or continue with</span>
+                  <div className="flex-grow border-t border-white/5"></div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <button className="h-12 border border-white/5 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors">GitHub</button>
+                  <button className="h-12 border border-white/5 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors">Email</button>
+                </div>
+              </div>
+
+              <p className="text-center text-[10px] text-[#6b7280] mt-10 leading-relaxed">
+                By signing up, you agree to our <span className="text-white underline cursor-pointer">Terms of Service</span> and <span className="text-white underline cursor-pointer">Privacy Policy</span>.
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <footer className="py-10 border-t border-white/5 text-center text-[#6b7280] text-sm">
+        <div className="container mx-auto px-8">
+          SmartDoc &copy; 2025 &middot; Graduation Project &middot; Built with &hearts;
+        </div>
+      </footer>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}} />
+    </motion.div>
+  );
+}
