@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, onAuthStateChanged, User, signInWithRedirect, googleProvider, signOut } from './firebase';
+import { getRedirectResult } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -15,10 +16,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // This catches the result when Google redirects back to your site
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect result error:", error);
+      });
+
+    // This listens for auth state changes
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
+
     return unsubscribe;
   }, []);
 
