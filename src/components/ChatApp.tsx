@@ -9,6 +9,7 @@ type Message = {
   type: 'user' | 'ai';
   text: string;
   timestamp: Date;
+  documentName?: string;
 };
 
 type Mode = 'QA' | 'Summary' | 'Slides' | 'Viz';
@@ -24,6 +25,7 @@ export default function ChatApp() {
   const [mode, setMode] = useState<Mode>('QA');
   const [summarySubMode, setSummarySubMode] = useState<SummarySubMode>('Overview');
   const [files, setFiles] = useState<{ name: string; size: string }[]>([]);
+  const [activeFileIndex, setActiveFileIndex] = useState<number | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +50,8 @@ export default function ChatApp() {
       id: Date.now().toString(),
       type: 'user',
       text: input,
-      timestamp: new Date()
+      timestamp: new Date(),
+      documentName: activeFileIndex !== null ? files[activeFileIndex].name : undefined
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -62,7 +65,8 @@ export default function ChatApp() {
         id: (Date.now() + 1).toString(),
         type: 'ai',
         text: getMockResponse(input, mode, summarySubMode),
-        timestamp: new Date()
+        timestamp: new Date(),
+        documentName: activeFileIndex !== null ? files[activeFileIndex].name : undefined
       };
       setMessages(prev => [...prev, aiResponse]);
     }, 1500);
@@ -83,7 +87,12 @@ export default function ChatApp() {
     const file = e.target.files?.[0];
     if (file) {
       const sizeStr = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
-      setFiles(prev => [...prev, { name: file.name, size: sizeStr }]);
+      const newFile = { name: file.name, size: sizeStr };
+      setFiles(prev => {
+        const next = [...prev, newFile];
+        setActiveFileIndex(next.length - 1);
+        return next;
+      });
       setMessages(prev => [...prev, {
         id: 'upload-' + Date.now(),
         type: 'ai',
@@ -135,10 +144,14 @@ export default function ChatApp() {
              <p className="text-[10px] text-[#6b7280] font-bold uppercase tracking-widest px-4 mt-6 mb-4">Files</p>
              {files.length > 0 ? (
                files.map((f, i) => (
-                 <div key={i} className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl border border-white/5 group cursor-pointer hover:border-[#2563eb]/50 transition-colors">
-                   <div className="w-8 h-8 rounded bg-red-500/20 flex items-center justify-center text-red-500 text-xs font-bold leading-none">PDF</div>
+                 <div 
+                   key={i} 
+                   onClick={() => setActiveFileIndex(i)}
+                   className={`flex items-center gap-3 px-4 py-3 rounded-xl border group cursor-pointer transition-colors ${activeFileIndex === i ? 'bg-[#2563eb]/10 border-[#2563eb]/50 ring-1 ring-[#2563eb]/30' : 'bg-white/5 border-white/5 hover:border-[#2563eb]/50'}`}
+                 >
+                   <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold leading-none ${activeFileIndex === i ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-500/20' : 'bg-red-500/20 text-red-500'}`}>PDF</div>
                    <div className="flex-1 overflow-hidden">
-                     <p className="text-xs font-bold truncate text-white">{f.name}</p>
+                     <p className={`text-xs font-bold truncate ${activeFileIndex === i ? 'text-white' : 'text-[#6b7280] group-hover:text-white'}`}>{f.name}</p>
                      <p className="text-[10px] text-[#6b7280]">{f.size}</p>
                    </div>
                  </div>
@@ -226,10 +239,14 @@ export default function ChatApp() {
            <div className="flex items-center gap-4">
               <Link to="/" className="md:hidden text-lg font-black text-white pr-4 border-r border-white/5">SD</Link>
               <div className="flex flex-col">
-                <h2 className="text-sm font-bold text-white">Project_Analysis_2024</h2>
+                <h2 className="text-sm font-bold text-white">
+                  {activeFileIndex !== null ? files[activeFileIndex].name : 'No Document Selected'}
+                </h2>
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                  <span className="text-[10px] font-mono text-[#6b7280] uppercase tracking-tighter">Claude-3 Opus Active</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${activeFileIndex !== null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                  <span className="text-[10px] font-mono text-[#6b7280] uppercase tracking-tighter">
+                    {activeFileIndex !== null ? 'Gemini-2.0 Flash Active' : 'System Ready'}
+                  </span>
                 </div>
               </div>
            </div>
@@ -264,6 +281,11 @@ export default function ChatApp() {
                         : 'bg-[#2563eb] border-[#2563eb] text-white rounded-tr-none'
                     }`}>
                       {msg.text}
+                      {msg.documentName && (
+                        <div className={`mt-3 pt-2 border-t border-white/10 text-[9px] font-bold uppercase tracking-[0.1em] ${msg.type === 'ai' ? 'text-[#2563eb]' : 'text-blue-200 opacity-80'}`}>
+                          Ref: {msg.documentName}
+                        </div>
+                      )}
                     </div>
                     <span className="text-[10px] text-[#6b7280] mt-2 font-mono">
                       {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
