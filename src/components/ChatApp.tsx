@@ -306,7 +306,7 @@ export default function ChatApp() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="flex h-[100dvh] w-full bg-[#0f1117] text-[#e5e7eb] font-sans overflow-hidden relative"
+      className="flex h-screen bg-[#0f1117] text-[#e5e7eb] font-sans overflow-hidden"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
