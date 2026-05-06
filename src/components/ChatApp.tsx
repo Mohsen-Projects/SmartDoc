@@ -1,8 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Send, Upload, ChevronLeft, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Send, Upload, ChevronLeft, ChevronDown, MessageSquare, FileText, Layout, Share2, Plus, Zap, Cpu, Settings, LogOut, Menu, X, Copy, Check, Search, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
+
+const Typewriter = ({ text, onComplete }: { text: string; onComplete?: () => void }) => {
+  const [displayed, setDisplayed] = useState('');
+  useEffect(() => {
+    let i = 0;
+    const t = setInterval(() => {
+      setDisplayed(prev => prev + text.charAt(i));
+      i++;
+      if (i >= text.length) {
+        clearInterval(t);
+        onComplete?.();
+      }
+    }, 15);
+    return () => clearInterval(t);
+  }, [text, onComplete]);
+  return <>{displayed}</>;
+};
 
 type Message = {
   id: string;
@@ -10,6 +27,16 @@ type Message = {
   text: string;
   timestamp: Date;
   documentName?: string;
+  isStreaming?: boolean;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  updatedAt: Date;
+  messages: Message[];
+  activeFileIndex: number | null;
+  files: { name: string; size: string }[];
 };
 
 type Mode = 'QA' | 'Summary' | 'Slides' | 'Viz';
@@ -27,9 +54,134 @@ export default function ChatApp() {
   const [files, setFiles] = useState<{ name: string; size: string }[]>([]);
   const [activeFileIndex, setActiveFileIndex] = useState<number | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [isDragging, setIsDragging] = useState(false);
+  const [chats, setChats] = useState<ChatSession[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string>(Date.now().toString());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuId(null);
+    if (openMenuId) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openMenuId]);
+
+  const deleteChat = (chatId: string) => {
+    setChats(prev => {
+      const next = prev.filter(c => c.id !== chatId);
+      if (user) {
+        localStorage.setItem(`smartdoc_chats_${user.uid}`, JSON.stringify(next));
+      }
+      return next;
+    });
+    if (currentChatId === chatId) {
+      createNewChat();
+    }
+  };
+
+  const renameChat = (chatId: string, newTitle: string) => {
+    setChats(prev => {
+      const next = prev.map(c => c.id === chatId ? { ...c, title: newTitle || c.title } : c);
+      if (user) {
+        localStorage.setItem(`smartdoc_chats_${user.uid}`, JSON.stringify(next));
+      }
+      return next;
+    });
+    setEditingChatId(null);
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setChats([]);
+      return;
+    }
+    const key = `smartdoc_chats_${user.uid}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        parsed.forEach((c: any) => {
+          c.updatedAt = new Date(c.updatedAt);
+          c.messages.forEach((m: any) => {
+             m.timestamp = new Date(m.timestamp);
+             m.isStreaming = false;
+          });
+        });
+        setChats(parsed);
+        if (parsed.length > 0) {
+          setCurrentChatId(parsed[0].id);
+          setMessages(parsed[0].messages);
+          setFiles(parsed[0].files || []);
+          setActiveFileIndex(parsed[0].activeFileIndex);
+        }
+      } catch (e) {
+        console.error("Failed parsing history", e);
+      }
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    setChats(prev => {
+      const exists = prev.findIndex(c => c.id === currentChatId);
+      const existingTitle = exists >= 0 ? prev[exists].title : null;
+      
+      let defaultTitle = 'New Chat';
+      if (files.length > 0) defaultTitle = files[0].name;
+      else if (messages.length > 1) {
+        const firstUserMsg = messages.find(m => m.type === 'user');
+        if (firstUserMsg) defaultTitle = firstUserMsg.text.slice(0, 25);
+      }
+
+      const newChat: ChatSession = {
+        id: currentChatId,
+        title: existingTitle && existingTitle !== 'New Chat' ? existingTitle : defaultTitle,
+        updatedAt: new Date(),
+        messages,
+        files,
+        activeFileIndex
+      };
+
+      const next = [...prev];
+      if (exists >= 0) {
+         next[exists] = newChat;
+      } else {
+         next.unshift(newChat);
+      }
+      if (user) {
+        localStorage.setItem(`smartdoc_chats_${user.uid}`, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, [messages, files, activeFileIndex, currentChatId, user?.uid]);
+
+  const loadChat = (chat: ChatSession) => {
+    setCurrentChatId(chat.id);
+    setMessages(chat.messages);
+    setFiles(chat.files);
+    setActiveFileIndex(chat.activeFileIndex);
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
+
+  const createNewChat = () => {
+    if (messages.length <= 1 && files.length === 0) {
+      if (window.innerWidth < 768) setIsSidebarOpen(false);
+      return;
+    }
+    const newId = Date.now().toString();
+    setCurrentChatId(newId);
+    setMessages([{ id: newId, type: 'ai', text: `Hello ${user?.displayName || 'there'}! I'm SmartDoc. Upload a PDF and I'll help you analyze it. What would you like to do?`, timestamp: new Date() }]);
+    setFiles([]);
+    setActiveFileIndex(null);
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,6 +193,16 @@ export default function ChatApp() {
       navigate('/');
     } catch (error) {
       console.error("Logout failed:", error);
+    }
+  };
+
+  const handleCopy = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy text', err);
     }
   };
 
@@ -67,7 +229,8 @@ export default function ChatApp() {
         type: 'ai',
         text: getMockResponse(input, mode, summarySubMode),
         timestamp: new Date(),
-        documentName: activeFileIndex !== null ? files[activeFileIndex].name : undefined
+        documentName: activeFileIndex !== null ? files[activeFileIndex].name : undefined,
+        isStreaming: true
       };
       setMessages(prev => [...prev, aiResponse]);
     }, 1500);
@@ -84,22 +247,53 @@ export default function ChatApp() {
     return `I found information related to "${query}" in Section 3.2. It states that the primary objectives are aligned with the 2025 sustainability goals.`;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const processFiles = (fileList: FileList | File[]) => {
+    const filesArray = Array.from(fileList);
+    const validFiles = filesArray.filter(f => f.type === 'application/pdf');
+    if (validFiles.length === 0) return;
+
+    const formattedFiles = validFiles.map(file => {
       const sizeStr = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
-      const newFile = { name: file.name, size: sizeStr };
-      setFiles(prev => {
-        const next = [...prev, newFile];
-        setActiveFileIndex(next.length - 1);
-        return next;
-      });
-      setMessages(prev => [...prev, {
-        id: 'upload-' + Date.now(),
-        type: 'ai',
-        text: `I've successfully indexed '${file.name}'. I'm ready to answer questions or generate summaries based on its content.`,
-        timestamp: new Date()
-      }]);
+      return { name: file.name, size: sizeStr };
+    });
+
+    setFiles(prev => {
+      const next = [...prev, ...formattedFiles];
+      setTimeout(() => setActiveFileIndex(next.length - 1), 0);
+      return next;
+    });
+
+    const uploadMessages = validFiles.map((file, i) => ({
+      id: 'upload-' + Date.now() + '-' + i,
+      type: 'ai' as const,
+      text: `I've successfully indexed '${file.name}'. I'm ready to answer questions or generate summaries based on its content.`,
+      timestamp: new Date()
+    }));
+
+    setMessages(prev => [...prev, ...uploadMessages]);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
     }
   };
 
@@ -112,11 +306,24 @@ export default function ChatApp() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="flex h-screen bg-[#0f1117] text-[#e5e7eb] font-sans overflow-hidden"
+      className="flex h-[100dvh] w-full bg-[#0f1117] text-[#e5e7eb] font-sans overflow-hidden relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
+      {isDragging && (
+        <div className="absolute inset-0 z-[9999] bg-[#2563eb]/20 backdrop-blur-sm border-4 border-dashed border-[#2563eb] rounded-2xl flex flex-col items-center justify-center pointer-events-none transition-all m-4">
+          <div className="w-24 h-24 bg-[#2563eb] rounded-full flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(37,99,235,0.5)] animate-bounce">
+            <Upload size={40} className="text-white" />
+          </div>
+          <h2 className="text-4xl font-extrabold text-white tracking-tighter mb-2">Drop your PDF</h2>
+          <p className="text-[#e5e7eb] text-xl">We'll instantly analyze it.</p>
+        </div>
+      )}
       {/* Hidden File Input */}
       <input 
         type="file" 
+        multiple
         ref={fileInputRef} 
         onChange={handleFileChange} 
         accept=".pdf"
@@ -131,10 +338,10 @@ export default function ChatApp() {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#111318] border-r border-white/5 flex flex-col transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <Link to="/" className="text-xl font-black text-white tracking-tighter">
-            Smart<span className="text-[#2563eb]">Doc</span>
+      <aside className={`fixed md:relative inset-y-0 left-0 z-50 bg-[#111318] border-r border-white/5 flex flex-col overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0 ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0'}`}>
+        <div className="p-6 border-b border-white/5 flex items-center justify-between shadow-sm flex-shrink-0 w-64">
+          <Link to="/" className="text-xl font-black text-white tracking-tighter flex items-center">
+            S<span className="tracking-tight mr-[1px]">mart</span><span className="text-[#2563eb]">D</span><span className="text-[#2563eb] tracking-tight">oc</span>
           </Link>
           <button 
             type="button"
@@ -145,84 +352,91 @@ export default function ChatApp() {
           </button>
         </div>
 
-        <div className="flex-1 p-4 flex flex-col gap-8 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-4 w-64 min-h-0 flex flex-col gap-6">
           <div>
              <button 
                type="button"
-               onClick={triggerFileUpload}
-               className="w-full flex items-center gap-3 px-4 py-3 bg-[#2563eb] text-white rounded-xl font-bold text-sm hover:scale-[1.02] transition-transform shadow-lg shadow-blue-900/10 mb-2"
+               onClick={createNewChat}
+               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#2563eb] text-white rounded-xl font-bold text-sm hover:scale-[1.02] transition-transform shadow-lg shadow-blue-900/10"
               >
-              <Plus size={18} /> New Document
+              <Plus size={18} /> New Chat
              </button>
-             <p className="text-[10px] text-[#6b7280] font-bold uppercase tracking-widest px-4 mt-6 mb-4">Files</p>
-             {files.length > 0 ? (
-               files.map((f, i) => (
-                 <div 
-                   key={i} 
-                   onClick={() => setActiveFileIndex(i)}
-                   className={`flex items-center gap-3 px-4 py-3 rounded-xl border group cursor-pointer transition-colors ${activeFileIndex === i ? 'bg-[#2563eb]/10 border-[#2563eb]/50 ring-1 ring-[#2563eb]/30' : 'bg-white/5 border-white/5 hover:border-[#2563eb]/50'}`}
-                 >
-                   <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold leading-none ${activeFileIndex === i ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-500/20' : 'bg-red-500/20 text-red-500'}`}>PDF</div>
-                   <div className="flex-1 overflow-hidden">
-                     <p className={`text-xs font-bold truncate ${activeFileIndex === i ? 'text-white' : 'text-[#6b7280] group-hover:text-white'}`}>{f.name}</p>
-                     <p className="text-[10px] text-[#6b7280]">{f.size}</p>
-                   </div>
-                 </div>
-               ))
-             ) : (
-               <div className="px-4 py-8 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-center">
-                 <Upload size={24} className="text-[#6b7280] mb-3 opacity-50" />
-                 <p className="text-xs text-[#6b7280] font-medium leading-relaxed">Drag & drop PDF here<br/>to start analyzing</p>
-               </div>
-             )}
           </div>
 
+          {chats.length > 0 && (
           <div>
-             <p className="text-[10px] text-[#6b7280] font-bold uppercase tracking-widest px-4 mb-4">Operations</p>
+             <p className="text-[10px] text-[#6b7280] font-bold uppercase tracking-widest px-4 mb-4">Recent Chats</p>
              <div className="space-y-1">
-                {[
-                  { id: 'QA', label: 'Semantic QA', icon: MessageSquare },
-                  { id: 'Summary', label: 'Summary Engine', icon: FileText },
-                  { id: 'Slides', label: 'Slide Generator', icon: Layout },
-                  { id: 'Viz', label: 'Visualizer', icon: Share2 },
-                ].map((item) => (
-                  <div key={item.id}>
-                    <button 
-                      type="button"
-                      onClick={() => setMode(item.id as Mode)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${mode === item.id ? 'bg-[#2563eb]/10 text-[#2563eb] border border-[#2563eb]/20' : 'text-[#6b7280] hover:bg-white/5'}`}
-                    >
-                      <item.icon size={18} />
-                      {item.label}
-                    </button>
-                    
-                    {/* Summary Sub-options */}
-                    {mode === 'Summary' && item.id === 'Summary' && (
-                      <div className="mt-2 ml-4 flex flex-col gap-1 border-l border-white/5 pl-4 py-1">
-                        {(['Snapshot', 'Overview', 'Deep Dive'] as SummarySubMode[]).map((sub) => (
-                          <button
-                            key={sub}
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSummarySubMode(sub);
-                            }}
-                            className={`text-left text-[11px] py-1.5 px-2 rounded-lg transition-colors ${summarySubMode === sub ? 'text-[#2563eb] bg-[#2563eb]/5 font-bold' : 'text-[#6b7280] hover:text-white'}`}
-                          >
-                            • {sub}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+               {chats.slice(0, 15).map(c => (
+                 <div key={c.id} className={`group relative w-full flex items-center justify-between px-2 py-1.5 rounded-xl text-xs transition-colors ${currentChatId === c.id ? 'bg-[#2563eb]/10 text-[#2563eb] font-bold' : 'text-[#6b7280] hover:text-white hover:bg-white/5'}`}>
+                   {editingChatId === c.id ? (
+                     <input
+                       type="text"
+                       value={editingTitle}
+                       onChange={(e) => setEditingTitle(e.target.value)}
+                       onKeyDown={(e) => {
+                         if (e.key === 'Enter') renameChat(c.id, editingTitle);
+                         if (e.key === 'Escape') setEditingChatId(null);
+                       }}
+                       onBlur={() => renameChat(c.id, editingTitle)}
+                       autoFocus
+                       className="w-full bg-transparent border border-[#2563eb] rounded px-2 py-1 outline-none text-white text-xs"
+                     />
+                   ) : (
+                     <>
+                       <button
+                         onClick={() => loadChat(c)}
+                         className="flex-1 text-left truncate px-2 py-1"
+                       >
+                         {c.title}
+                       </button>
+                       <div className="relative">
+                         <button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setOpenMenuId(openMenuId === c.id ? null : c.id);
+                           }}
+                           className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded-md transition-opacity"
+                         >
+                           <MoreVertical size={14} />
+                         </button>
+                         {openMenuId === c.id && (
+                           <div className="absolute right-0 top-full mt-1 w-32 bg-[#1a1d25] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden"
+                                onClick={(e) => e.stopPropagation()}
+                           >
+                             <button
+                               onClick={() => {
+                                 setEditingChatId(c.id);
+                                 setEditingTitle(c.title);
+                                 setOpenMenuId(null);
+                               }}
+                               className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-white hover:bg-white/5"
+                             >
+                               <Edit2 size={12} /> Rename
+                             </button>
+                             <button
+                               onClick={() => {
+                                 deleteChat(c.id);
+                                 setOpenMenuId(null);
+                               }}
+                               className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs text-red-500 hover:bg-white/5"
+                             >
+                               <Trash2 size={12} /> Delete
+                             </button>
+                           </div>
+                         )}
+                       </div>
+                     </>
+                   )}
+                 </div>
+               ))}
              </div>
           </div>
+          )}
         </div>
 
-        <div className="p-4 border-t border-white/5">
-           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+        <div className="p-4 border-t border-white/5 w-64 mt-auto flex-shrink-0 bg-[#0a0c10]/50">
+           <div className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 transition-colors rounded-xl border border-white/5">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || ''} className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               ) : (
@@ -246,21 +460,43 @@ export default function ChatApp() {
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col relative">
+      <main className="flex-1 flex flex-col relative h-full min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-[70px] border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-[#0f1117]/80 backdrop-blur-md sticky top-0 z-30">
+        <header className="absolute top-0 inset-x-0 h-[70px] flex-shrink-0 border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-[#0f1117]/80 backdrop-blur-md z-30">
            <div className="flex items-center gap-3 md:gap-4">
               <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-2 -ml-2 text-[#6b7280] hover:text-white md:hidden"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-2 -ml-2 text-[#6b7280] hover:text-white transition-colors"
               >
                 <Menu size={24} />
               </button>
-              <Link to="/" className="hidden md:block text-lg font-black text-white pr-4 border-r border-white/5">SD</Link>
+              <Link to="/" className="hidden md:flex items-center text-lg font-black text-white pr-4 border-r border-white/5 tracking-tighter">
+                S<span className="text-[#2563eb]">D</span>
+              </Link>
               <div className="flex flex-col">
-                <h2 className="text-sm font-bold text-white">
-                  {activeFileIndex !== null ? files[activeFileIndex].name : 'No Document Selected'}
-                </h2>
+                {files.length > 0 ? (
+                  <div className="relative flex items-center group cursor-pointer -mx-1 px-1 rounded hover:bg-white/5">
+                    <span className="text-sm font-bold text-white pr-5 truncate max-w-[150px] md:max-w-[250px]">
+                      {files[activeFileIndex ?? 0]?.name}
+                    </span>
+                    <select 
+                      value={activeFileIndex ?? ''} 
+                      onChange={(e) => setActiveFileIndex(Number(e.target.value))}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    >
+                      {files.map((f, i) => (
+                        <option key={i} value={i} className="bg-[#111318] text-white">
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="text-[#6b7280] absolute right-1 z-0 group-hover:text-white pointer-events-none" />
+                  </div>
+                ) : (
+                  <h2 className="text-sm font-bold text-white">
+                    No Document Selected
+                  </h2>
+                )}
                 <div className="flex items-center gap-2">
                   <span className={`w-1.5 h-1.5 rounded-full ${activeFileIndex !== null ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
                   <span className="text-[10px] font-mono text-[#6b7280] uppercase tracking-tighter">
@@ -286,7 +522,7 @@ export default function ChatApp() {
         </header>
 
         {/* Chat Body */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 md:px-8 pb-4 md:pb-8 pt-[90px] md:pt-[90px] space-y-6">
            <div className="max-w-3xl mx-auto space-y-8">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-4 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -299,16 +535,34 @@ export default function ChatApp() {
                         ? 'bg-[#111318] border-white/5 text-[#e5e7eb] rounded-tl-none' 
                         : 'bg-[#2563eb] border-[#2563eb] text-white rounded-tr-none'
                     }`}>
-                      {msg.text}
+                      {msg.type === 'ai' && msg.isStreaming ? (
+                        <Typewriter 
+                          text={msg.text} 
+                          onComplete={() => {
+                            setMessages(msgs => msgs.map(m => m.id === msg.id ? { ...m, isStreaming: false } : m));
+                          }}
+                        />
+                      ) : (
+                        msg.text
+                      )}
                       {msg.documentName && (
                         <div className={`mt-3 pt-2 border-t border-white/10 text-[9px] font-bold uppercase tracking-[0.1em] ${msg.type === 'ai' ? 'text-[#2563eb]' : 'text-blue-200 opacity-80'}`}>
                           Ref: {msg.documentName}
                         </div>
                       )}
                     </div>
-                    <span className="text-[10px] text-[#6b7280] mt-2 font-mono">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    <div className="flex flex-col gap-1 mt-2">
+                       <span className={`text-[10px] text-[#6b7280] font-mono ${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
+                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                       </span>
+                       <button
+                         onClick={() => handleCopy(msg.text, msg.id)}
+                         className={`flex items-center gap-1.5 text-[10px] text-[#6b7280] hover:text-white transition-colors ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                       >
+                         {copiedId === msg.id ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                         {copiedId === msg.id ? 'Copied' : 'Copy'}
+                       </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -329,8 +583,45 @@ export default function ChatApp() {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 md:p-8 border-t border-white/5 bg-[#0f1117]">
-          <div className="max-w-3xl mx-auto group">
+        <div className="p-4 bg-[#0a0c10] border-t border-white/5 relative z-40">
+          <div className="max-w-3xl mx-auto flex flex-col gap-3">
+            
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {[
+                  { id: 'QA', label: 'Semantic QA', icon: MessageSquare },
+                  { id: 'Summary', label: 'Summary Engine', icon: FileText },
+                  { id: 'Slides', label: 'Slide Generator', icon: Layout },
+                  { id: 'Viz', label: 'Visualizer', icon: Share2 },
+              ].map((item) => (
+                <div key={item.id} className="relative flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => setMode(item.id as Mode)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${mode === item.id ? 'bg-[#2563eb]/20 text-[#2563eb] border border-[#2563eb]/30 ring-1 ring-[#2563eb]/30' : 'bg-[#1a1d25] text-[#6b7280] hover:bg-white/10 hover:text-white border border-white/5'}`}
+                  >
+                    <item.icon size={14} className={mode === item.id ? "text-[#2563eb]" : "text-[#6b7280]"} />
+                    {item.label}
+                    {mode === 'Summary' && item.id === 'Summary' && (
+                      <span className="flex items-center gap-1 border-l border-[#2563eb]/30 pl-2 ml-1 pointer-events-none">
+                        {summarySubMode} <ChevronDown size={12} />
+                      </span>
+                    )}
+                  </button>
+                  {mode === 'Summary' && item.id === 'Summary' && (
+                    <select
+                      value={summarySubMode}
+                      onChange={(e) => setSummarySubMode(e.target.value as SummarySubMode)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    >
+                      <option value="Snapshot" className="bg-[#111318] text-white">Snapshot</option>
+                      <option value="Overview" className="bg-[#111318] text-white">Overview</option>
+                      <option value="Deep Dive" className="bg-[#111318] text-white">Deep Dive</option>
+                    </select>
+                  )}
+                </div>
+              ))}
+            </div>
+
             <div className="relative">
               <input 
                 type="text" 
@@ -338,32 +629,30 @@ export default function ChatApp() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={mode === 'Summary' ? `Explain with ${summarySubMode}...` : `Type your request for ${mode} mode...`}
-                className="w-full bg-[#1a1d25] border border-white/5 rounded-2xl pl-14 pr-16 py-4 text-sm focus:outline-none focus:border-[#2563eb]/50 transition-all shadow-2xl"
+                className="w-full bg-[#1a1d25] border border-white/5 rounded-2xl pl-12 pr-12 py-3.5 text-sm focus:outline-none focus:border-[#2563eb]/50 transition-all shadow-xl text-white"
               />
               <div 
-                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 hover:bg-white/5 rounded-lg text-[#6b7280] transition-colors cursor-pointer flex items-center justify-center"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 hover:bg-white/5 rounded-lg text-[#6b7280] hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                 onClick={triggerFileUpload}
               >
-                <Upload size={20} />
+                <Upload size={18} />
               </div>
               <button 
                 type="button"
                 onClick={handleSend}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#2563eb] text-white rounded-xl flex items-center justify-center hover:scale-105 transition-all shadow-lg shadow-blue-900/20"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 bg-[#2563eb] text-white rounded-lg flex items-center justify-center hover:scale-105 transition-all shadow-lg shadow-blue-900/20"
               >
-                <Send size={18} />
+                <Send size={14} />
               </button>
             </div>
-            <div className="mt-4 flex justify-between items-center px-2">
+            
+            <div className="flex justify-between items-center px-1 mt-1">
               <div className="flex gap-4">
                 <span className="text-[10px] font-bold text-[#6b7280] uppercase tracking-widest flex items-center gap-1 focus-within:text-[#2563eb]">
                   <Zap size={10} /> Active Tokens: 1,402
                 </span>
-                <span className="text-[10px] font-bold text-[#6b7280] uppercase tracking-widest flex items-center gap-1">
-                  <FileText size={10} /> Page 14 Reference
-                </span>
               </div>
-              <p className="text-[10px] text-[#6b7280] font-medium italic">Shift + Enter for new line</p>
+              <p className="text-[9px] text-[#6b7280] font-medium tracking-wide">AI Studio preview</p>
             </div>
           </div>
         </div>
