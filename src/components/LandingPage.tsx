@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../lib/AuthContext';
@@ -7,7 +7,7 @@ import { LogIn } from 'lucide-react';
 export default function LandingPage() {
   const [activeReveal, setActiveReveal] = useState<{ [key: string]: boolean }>({});
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { user, signInWithGoogle, signInWithGithub, signInAsGuest, signInWithEmail, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,29 +19,17 @@ export default function LandingPage() {
   const [authError, setAuthError] = useState('');
 
   useEffect(() => {
+    // Hide loading screen very quickly now
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     // Check if redirecting from a protected route
     if (location.search.includes('login=true')) {
       setShowLoginModal(true);
     }
   }, [location]);
-
-  useEffect(() => {
-    observerRef.current = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('data-reveal-id');
-          if (id) {
-            setActiveReveal((prev) => ({ ...prev, [id]: true }));
-          }
-        }
-      });
-    }, { threshold: 0.15 });
-
-    const revealedElements = document.querySelectorAll('[data-reveal-id]');
-    revealedElements.forEach((el) => observerRef.current?.observe(el));
-
-    return () => observerRef.current?.disconnect();
-  }, []);
 
   const handleAuthAction = async () => {
     if (user) {
@@ -99,17 +87,57 @@ export default function LandingPage() {
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="bg-[#0f1117] text-[#e5e7eb] font-sans overflow-x-hidden min-h-screen"
-    >
+    <AnimatePresence mode="wait">
+      {isLoading ? (
+        <motion.div 
+          key="loader"
+          exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="fixed inset-0 z-[9999] bg-[#0a0c10] flex items-center justify-center overflow-hidden"
+        >
+          {/* Atmospheric background */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-[radial-gradient(circle,rgba(37,99,235,0.15)_0%,transparent_60%)] opacity-50 blur-3xl rounded-full mix-blend-screen"></div>
+          
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative flex items-center text-7xl md:text-[140px] font-black tracking-tighter"
+          >
+            <span className="text-white z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">S</span>
+            <motion.span 
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: "auto", opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden inline-block text-white z-0"
+            >
+              <span>mart</span>
+            </motion.span>
+            
+            <span className="text-[#2563eb] z-10 drop-shadow-[0_0_30px_rgba(37,99,235,0.5)] leading-none text-8xl md:text-[150px] relative -top-1 md:-top-2 lg:-top-3 ml-1 md:ml-2">D</span>
+            <motion.span 
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: "auto", opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden inline-block text-[#2563eb] z-0"
+            >
+              <span>oc</span>
+            </motion.span>
+          </motion.div>
+        </motion.div>
+      ) : (
+        <motion.div 
+          key="content"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="bg-[#0f1117] text-[#e5e7eb] font-sans overflow-x-hidden min-h-screen"
+        >
       {/* Navigation */}
       <nav className="fixed top-0 left-0 w-full h-[70px] bg-[#0f1117]/80 backdrop-blur-md z-[1000] border-b border-white/5">
         <div className="max-w-7xl mx-auto px-8 h-full flex items-center justify-between">
-          <Link to="/" className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            Smart<span className="text-[#2563eb]">Doc</span>
+          <Link to="/" className="text-2xl font-extrabold text-white tracking-tighter flex items-center">
+            S<span className="tracking-tight mr-[1px]">mart</span><span className="text-[#2563eb]">D</span><span className="text-[#2563eb] tracking-tight">oc</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <a href="#problem" className="text-sm font-medium text-[#6b7280] hover:text-white transition-colors">Problem</a>
@@ -130,7 +158,7 @@ export default function LandingPage() {
       {/* Hero */}
       <header className="pt-[120px] md:pt-[180px] pb-[60px] md:pb-[100px] text-center relative overflow-hidden">
         <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle,rgba(37,99,235,0.1)_0%,transparent_70%)] -z-10 opacity-50"></div>
-        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['hero'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="hero">
+        <div className="container mx-auto px-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <h1 className="text-5xl md:text-7xl font-extrabold leading-[1.1] mb-6 tracking-tighter text-white">
             Your Documents,<br />Finally <span className="text-[#2563eb]">Intelligent</span>
           </h1>
@@ -151,7 +179,7 @@ export default function LandingPage() {
           </div>
           
           {/* Chat Mockup */}
-          <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[900px] mx-auto h-[400px] md:h-[500px] relative shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden">
+          <div className="bg-[#1a1d25]/60 backdrop-blur-3xl rounded-[24px] border border-white/10 max-w-[900px] mx-auto h-[400px] md:h-[500px] relative shadow-[0_40px_100px_-20px_rgba(37,99,235,0.2)] flex flex-col overflow-hidden">
             <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
@@ -183,8 +211,8 @@ export default function LandingPage() {
       </header>
 
       {/* Problem Section */}
-      <section id="problem" className="py-16 md:py-24">
-        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['problem'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="problem">
+      <section id="problem" className="py-16 md:py-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="container mx-auto px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold mb-4 text-white">Reading docs shouldn't be this painful</h2>
             <p className="text-[#6b7280] text-lg max-w-2xl mx-auto">Modern professionals waste hours every week digging through static PDF files.</p>
@@ -206,8 +234,8 @@ export default function LandingPage() {
       </section>
 
       {/* Solution Section */}
-      <section id="solution" className="py-16 md:py-24 bg-[#111318]">
-        <div className={`container mx-auto px-8 text-center transition-all duration-700 ${activeReveal['solution'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="solution">
+      <section id="solution" className="py-16 md:py-24 bg-[#111318] animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="container mx-auto px-8 text-center">
           <div className="mb-16">
             <h2 className="text-4xl font-extrabold mb-4 text-white">SmartDoc fixes all of that</h2>
             <p className="text-[#6b7280] text-lg max-w-2xl mx-auto">One upload. Four powerful AI modes. Every document becomes a conversation.</p>
@@ -236,8 +264,8 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-16 md:py-24">
-        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['features'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="features">
+      <section id="features" className="py-16 md:py-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="container mx-auto px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold text-white">Everything you need. Nothing you don't.</h2>
           </div>
@@ -260,14 +288,14 @@ export default function LandingPage() {
       </section>
 
       {/* Demo Section (Fake Interactive) */}
-      <section id="demo" className="py-16 md:py-24 bg-[#0a0c10]">
-         <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['demo'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="demo">
+      <section id="demo" className="py-16 md:py-24 bg-[#0a0c10] animate-in fade-in slide-in-from-bottom-8 duration-700">
+         <div className="container mx-auto px-8">
            <div className="text-center mb-16">
              <h2 className="text-4xl font-extrabold mb-4 text-white">See it in action</h2>
              <p className="text-[#6b7280] text-lg">Our AI analyzes and responds to complex document queries in real-time.</p>
            </div>
            
-           <div className="bg-[#1a1d25] rounded-[20px] border border-white/10 max-w-[800px] mx-auto h-[350px] md:h-[450px] flex flex-col overflow-hidden shadow-2xl">
+           <div className="bg-[#1a1d25]/60 backdrop-blur-3xl rounded-[24px] border border-white/10 max-w-[800px] mx-auto h-[350px] md:h-[450px] flex flex-col overflow-hidden shadow-2xl">
               <div className="px-6 py-4 border-b border-white/5">
                 <span className="font-bold text-white">SmartDoc Demo</span>
               </div>
@@ -292,8 +320,8 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-16 md:py-24">
-        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['how'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="how">
+      <section id="how-it-works" className="py-16 md:py-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="container mx-auto px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold text-white">Three steps to document intelligence</h2>
           </div>
@@ -319,11 +347,11 @@ export default function LandingPage() {
       </section>
 
       {/* Tech Stack */}
-      <section className="py-16 md:py-24 text-center">
-        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['tech'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="tech">
+      <section className="py-16 md:py-24 text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="container mx-auto px-8">
           <h2 className="text-3xl font-extrabold mb-12 text-white">Built with serious technology</h2>
           <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {['Python', 'Flask', 'Claude AI (Anthropic)', 'Mermaid.js', 'RAG Pipeline', 'JavaScript', 'Tailwind CSS'].map((tech, i) => (
+            {['Python', 'Flask', 'Lang Chain', 'Lang Graph', 'Mermaid.js', 'RAG Pipeline', 'JavaScript', 'Tailwind CSS'].map((tech, i) => (
               <div key={i} className="bg-[#1a1d25] px-5 py-2 rounded-lg font-bold text-sm text-white border border-white/5">
                 {tech}
               </div>
@@ -334,8 +362,8 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Final */}
-      <section className="py-20 md:py-32 bg-gradient-to-b from-[#0f1117] to-[#1a1d25] text-center">
-        <div className={`container mx-auto px-8 transition-all duration-700 ${activeReveal['cta'] ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`} data-reveal-id="cta">
+      <section className="py-20 md:py-32 bg-gradient-to-b from-[#0f1117] to-[#1a1d25] text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="container mx-auto px-8">
           <h2 className="text-5xl font-extrabold mb-6 text-white">Ready to talk to your documents?</h2>
           <p className="text-xl text-[#6b7280] mb-12">Built as a graduation project. Designed like a product.</p>
           <div className="flex flex-wrap justify-center gap-4">
@@ -478,6 +506,8 @@ export default function LandingPage() {
           to { opacity: 1; transform: translateY(0); }
         }
       `}} />
-    </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
